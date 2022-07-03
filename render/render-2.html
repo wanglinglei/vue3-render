@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body id="body"></body>
+</html>
+<script>
+  // 对dom的挂载封装解耦 实现多节点的渲染
+  // 绑定了节点的属性
+  const body = document.getElementById("body");
+
+  const vnode = {
+    tag: "div",
+    props: {
+      id: "div1",
+      name: "div1",
+      class: "div1 div-one",
+    },
+    children: [
+      {
+        tag: "div",
+        children: "div1-1",
+      },
+      {
+        tag: "div",
+        children: "div1-2",
+      },
+    ],
+  };
+  const methods = {
+    // 创建dom
+    createElement(tag) {
+      return document.createElement(tag);
+    },
+    // 设置dom文本
+    setElementText(ele, text) {
+      ele.textContent = text;
+    },
+    // 绑定dom属性
+    patchProps(ele, key, value) {
+      if (key === "class") {
+        ele.className = value;
+      }
+      if (shouldSetAsProps(ele, key)) {
+        const type = typeof ele[key];
+        //这里主要处理 <input disable/> 这种情况
+        if (type === "boolean" && value === "") {
+          ele[key] = true;
+        } else {
+          ele[key] = value;
+        }
+      } else {
+        ele.setAttribute(key, value);
+      }
+    },
+    // 插入节点
+    insert(ele, container) {
+      container.appendChild(ele);
+    },
+  };
+
+  function shouldSetAsProps(ele, key, value) {
+    // 特殊处理 如果是input标签 form 属性是只读属性 不能通过ele[key]来设置
+    if (key === "form" && ele.tagName === "INPUT") {
+      return false;
+    }
+    // 用in操作符判断key是否存在于对应的DOM Properties
+    return key in ele;
+  }
+
+  // 定义一个创建渲染器的方法
+  function createRenderer(methods) {
+    const { createElement, setElementText, patchProps, insert } = methods;
+    // 接收三个参数 n1 老节点 n2 新节点 container
+    function patch(n1, n2, container) {
+      // 新老节点一样 不需要渲染
+      if (n1 === n2) {
+        return;
+      }
+      // n1 不存在初次渲染
+      if (!n1) {
+        mountElement(n2, container);
+      }
+    }
+    // 节点初始化挂载方法
+    function mountElement(vnode, container) {
+      const ele = createElement(vnode.tag);
+      // 如果是string类型 则渲染文本 如果是array类型 渲染子节点
+      if (typeof vnode.children === "string") {
+        setElementText(ele, vnode.children);
+      } else if (Array.isArray(vnode.children)) {
+        vnode.children.forEach((item) => {
+          patch(null, item, ele);
+        });
+      }
+      // 如果存在props属性 绑定props属性
+      if (vnode.props) {
+        for (const key in vnode.props) {
+          const value = vnode.props[key];
+          patchProps(ele, key, value);
+        }
+      }
+      insert(ele, container);
+    }
+    // render 函数接受两个参数 vnode 虚拟dom节点 container 节点挂载的容器
+    function render(vnode, container) {
+      if (vnode) {
+        // 执行挂载方法
+        patch(container._vnode, vnode, container);
+      } else {
+        // 新节点不存在 说明节点被删除
+        if (container._vnode) {
+          container.innerHtml = "";
+        }
+      }
+      container._vnode = vnode;
+    }
+    return { render };
+  }
+  createRenderer(methods).render(vnode, body);
+</script>

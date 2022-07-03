@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body id="body"></body>
+</html>
+<script>
+  // 实现一个最基本的渲染器
+  const body = document.getElementById("body");
+
+  const vnode = {
+    tag: "div",
+    children: "div1",
+  };
+  // 定义一个创建渲染器的方法
+  function createRenderer() {
+    // 接收三个参数 n1 老节点 n2 新节点 container
+    function patch(n1, n2, container) {
+      // 新老节点一样 不需要渲染
+      if (n1 === n2) {
+        return;
+      }
+      // n1 不存在初次渲染
+      if (!n1) {
+        const ele = document.createElement(n2.tag);
+        ele.textContent = n2.children;
+        container.appendChild(ele);
+      }
+    }
+
+    // render 函数接受两个参数 vnode 虚拟dom节点 container 节点挂载的容器
+    function render(vnode, container) {
+      if (vnode) {
+        // 执行挂载方法
+        patch(container._vnode, vnode, container);
+      } else {
+        // 新节点不存在 说明节点被删除
+        if (container._vnode) {
+          container.innerHtml = "";
+        }
+      }
+      container._vnode = vnode;
+    }
+    return { render };
+  }
+  createRenderer().render(vnode, body);
+
+  //@note 我们这里实现了一个最基本的渲染器 但是不够灵活 处理的场景比较单一
+  // 我们把有关dom的创建 属性的绑定 挂载都写在patch方法中 相互之间耦合性太高 不利于维护 我们需要把他们做拆分解耦
+  // 我们这里只处理了单节点的情况 我们这个节点下又有多个节点该怎么处理呢？
+</script>
