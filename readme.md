@@ -73,6 +73,7 @@ function render(vnode){
 ```
 
 ## 渲染器实现流程简述
+####普通HTML节点渲染
 1. 根据虚拟dom节点类型创建对应dom
    ```
    const ele = document.createElement(tag);
@@ -118,4 +119,75 @@ function render(vnode){
       },
       ```
     *  
-    * 
+3. 绑定事件
+    * 基本实现 通过正则匹配 **on** 关键字来获取事件名称
+      ```
+      patchProps(ele, key, value) {
+        if (/^on/.test(key)) {
+          // 获取事件名称
+          const event = key.slice(2).toLowerCase();
+          ele.addEventListener(event, value);
+        }
+        ...省略其他内容
+      },
+      ```
+    * 绑定事件的更新
+      ```
+      if (/^on/.test(key)) {
+        const invoker = ele._eventInvoker;
+        // 获取事件名称
+        const event = key.slice(2).toLowerCase();
+        if (nextValue) {
+          // 实际绑定的是invoker函数 执行时执行的是invoker.value 因此当我们需要更新时只需要更新value 值
+          if (!invoker) {
+            // 没有invoker 生成并挂载
+            invoker = ele._eventInvoker = (e) => {
+              invoker.value(e);
+            };
+            invoker.value = nextValue;
+            ele.addEventListener(event, invoker);
+          } else {
+            invoker.value = nextValue;
+          }
+        } else {
+          // 不存在新的函数  但存在invoker 移除绑定
+          if (invoker) {
+            ele.addEventListener(event, invoker);
+          }
+        }
+      }
+      ``` 
+    * 绑定了多个事件类型以及一个类型绑定了多个事件
+      ```
+      if (/^on/.test(key)) {
+        // 定义一个键值对 来实现多个事件类型的绑定 避免事件覆盖
+        const invokers = ele._eventInvoker || (ele._eventInvoker = {});
+        let invoker = invokers[key];
+        // 获取事件名称
+        const event = key.slice(2).toLowerCase();
+        if (nextValue) {
+          // 实际绑定的是invoker函数 执行时执行的是invoker.value 因此当我们需要更新时只需要更新value 的值
+          if (!invoker) {
+            // 没有invoker 生成并挂载
+            invoker = ele._eventInvoker[key] = (e) => {
+              // 如果是数组类型 说明同一个事件绑定了多个函数
+              if (Array.isArray(invoker.value)) {
+                invoker.value.forEach((fn) => fn());
+              } else {
+                invoker.value(e);
+              }
+            };
+            invoker.value = nextValue;
+            ele.addEventListener(event, invoker);
+          } else {
+            invoker.value = nextValue;
+          }
+        } else {
+          // 不存在新的函数  但存在invoker 移除绑定
+          if (invoker) {
+            ele.addEventListener(event, invoker);
+          }
+        }
+      }
+      ```  
+4.   
