@@ -73,7 +73,7 @@ function render(vnode){
 ```
 
 ## 渲染器实现流程简述
-####普通HTML节点渲染
+#### 普通HTML节点渲染
 1. 根据虚拟dom节点类型创建对应dom
    ```
    const ele = document.createElement(tag);
@@ -190,4 +190,73 @@ function render(vnode){
         }
       }
       ```  
-4.   
+4. 节点的更新
+      * 更新节点属性
+      遍历对比节点前后的props,有相同的key更新属性值,老props没有新prop有的key新增,老props有新prop没有的key删除或重置默认态。
+        ```
+        // 先更新新的属性 再删除旧属性不存在新属性中的属性
+        for (const key in newProps) {
+          if (oldProps[key] !== newProps[key]) {
+            patchProps(ele, key, oldProps[key], newProps[key]);
+          }
+        }
+        for (const key in oldProps) {
+          if (!(key in newProps)) {
+            patchProps(ele, key, oldProps[key], null);
+          }
+        }
+        ```
+      * 更新节点的子节点 
+      节点的子节点children有三种形式
+        * 没有子节点
+        * 子节点为文本类型，类型为String
+        * 子节点为一组子节点，类型为Array
+      子节点的更新方案：
+        * 旧节点没有子节点，直接更新新的子节点
+        * 旧节点的子节点为文本子节点，判断新的子节点的类型；若为String，直接替换文本；若为Array,节点的文属性置为空，渲染子节点
+        * 旧节点的子节点为一组子节点，判断新的子节点的类型；若为String，先卸载全部的就得子节点，再设置文本属性值；若为Array,先卸载全部旧的子节点，再渲染全部新的子节点
+        ```
+          // 更新子节点
+          function patchChildren(n1, n2, container) {
+            // 如果新的子节点是文本内容
+            // 判断老子节点是否为数组类型 是 则老节点有多个子节点 全部卸载 然后设置新文本
+            if (typeof n2.children === "string") {
+              if (Array.isArray(n1.children)) {
+                n1.children.forEach((child) => {
+                  unmount(child);
+                });
+              }
+              setElementText(container, n2.children);
+            } else if (Array.isArray(n2.children)) {
+              // 如果新的节点 是多个子节点
+              // 判断旧的是否也是多子节点 是则diff
+              if (Array.isArray(n1.children)) {
+                // diff
+                n1.children.forEach((child) => {
+                  unmount(child);
+                });
+                n2.children.forEach((child) => {
+                  patch(null, child, container);
+                });
+              } else {
+                // 旧的不是多子节点 清空 原节点， 遍历挂载子节点
+                setElementText(container, "");
+                n2.children.forEach((child) => {
+                  patch(null, child, container);
+                });
+              }
+            } else {
+              // 新节点 为null 判断旧节点类型 卸载或清空文本
+              if (Array.isArray(n1.children)) {
+                // diff
+                n1.children.forEach((child) => {
+                  unmount(child);
+                });
+              } else if (typeof n1.children === "string") {
+                setElementText(container, "");
+              }
+            }
+          }
+        ```
+
+5.  

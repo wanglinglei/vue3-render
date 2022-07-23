@@ -67,7 +67,7 @@
             invoker = ele._eventInvoker[key] = (e) => {
               // 如果是数组类型 说明同一个事件绑定了多个函数
               if (Array.isArray(invoker.value)) {
-                invoker.value.forEach((fn) => fn());
+                invoker.value.forEach((fn) => fn(e));
               } else {
                 invoker.value(e);
               }
@@ -80,7 +80,7 @@
         } else {
           // 不存在新的函数  但存在invoker 移除绑定
           if (invoker) {
-            ele.addEventListener(event, invoker);
+            ele.removeEventListener(event, invoker);
           }
         }
       } else if (key === "class") {
@@ -132,6 +132,7 @@
         mountElement(n2, container);
       } else {
         // 更新
+        patchElement(n1, n2);
       }
     }
     // 节点初始化挂载方法
